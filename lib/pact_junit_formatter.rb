@@ -69,12 +69,11 @@ class PactJUnitFormatter < RSpec::Core::Formatters::BaseFormatter
     end
 
     def dump_failed(example)
-      exception = example.example.execution_result.exception
-      backtrace = example.example.formatted_backtrace
+      exception = example.example.exception
 
       dump_example(example) do
-        @xml.failure(message: exception.to_s, type: exception.class.name) do
-          @xml.cdata!("#{exception.message}\n#{backtrace.join("\n")}")
+        @xml.failure(message: exception.message, type: exception.class.name) do
+          @xml.cdata!("#{exception.message}\n#{exception.backtrace.join("\n")}")
         end
       end
     end
