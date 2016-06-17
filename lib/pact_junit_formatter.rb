@@ -7,12 +7,15 @@ require 'rspec/core/formatters/base_formatter'
 require 'pact_junit_formatter/version'
 
 class PactJUnitFormatter < RSpec::Core::Formatters::BaseFormatter
-  RSpec::Core::Formatters.register(self, :dump_summary)
+  RSpec::Core::Formatters.register(self, :stop, :dump_summary)
+
+  def stop(notification)
+    @examples = rearrange(notification.notifications.map {|n| PactExample.new(n) })
+  end
 
   def dump_summary(notification)
     @notification = notification
-    examples = rearrange(notification.examples.map {|e| PactExample.new(e) })
-    xml_dump(examples)
+    xml_dump(@examples)
   end
 
   private
@@ -70,10 +73,11 @@ class PactJUnitFormatter < RSpec::Core::Formatters::BaseFormatter
 
     def dump_failed(example)
       exception = example.example.exception
+      message = exception.message.gsub(/\e\[(\d+)m/, '')
 
       dump_example(example) do
-        @xml.failure(message: exception.message, type: exception.class.name) do
-          @xml.cdata!("#{exception.message}\n#{exception.backtrace.join("\n")}")
+        @xml.failure(message: message, type: exception.class.name) do
+          @xml.cdata!("#{message}\n#{example.notification.formatted_backtrace.join("\n")}")
         end
       end
     end
@@ -90,9 +94,10 @@ class PactJUnitFormatter < RSpec::Core::Formatters::BaseFormatter
   end
 
   class PactExample
-    attr_reader :example, :contract
-    def initialize(example)
-      @example = example
+    attr_reader :notification, :example, :contract
+    def initialize(notification)
+      @notification = notification
+      @example = notification.example
       @contract = JSON.parse(example.metadata[:pact_json])
     end
 
